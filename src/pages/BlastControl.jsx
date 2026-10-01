@@ -11,6 +11,7 @@ import {
   clearStoredNasabah,
   getStoredNasabahMeta,
 } from '../services/storage';
+import { BASE_URL } from '../services/api';
 
 // ─── Template Siap Pakai ─────────────────────────────────────
 const READY_TEMPLATES = [
@@ -164,7 +165,7 @@ export default function BlastControl() {
   // ── Cek status WA setiap 5 detik ───────────────────────────
   const checkBackend = useCallback(async () => {
     try {
-      const r = await fetch('http://localhost:3001/api/status');
+      const r = await fetch(`${BASE_URL}/status`);
       const d = await r.json();
       setBackendOnline(true);
       setWaConnected(d.connected);
@@ -283,7 +284,7 @@ export default function BlastControl() {
       setQueue(prev => prev.map(q => q.id === item.id ? { ...q, status: 'mengirim' } : q));
 
       try {
-        const r = await fetch('http://localhost:3001/api/send', {
+        const r = await fetch(`${BASE_URL}/send`, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ phone: item.noTelp, message: item.message }),
@@ -432,7 +433,7 @@ export default function BlastControl() {
                 setAllNasabah([]);
                 setSelectedIds([]);
                 setQueue([]);
-                fetch('http://localhost:3001/api/queue', { method: 'DELETE' }).catch(() => {});
+                fetch(`${BASE_URL}/queue`, { method: 'DELETE' }).catch(() => {});
               }
             }}
             className="text-red-400 hover:text-red-300 underline font-medium self-start sm:self-auto flex items-center gap-1 flex-shrink-0"

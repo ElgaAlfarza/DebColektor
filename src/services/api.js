@@ -5,10 +5,10 @@
 
 // Jika diakses dari Vite dev server (port 5173), pakai backend port 3001
 // Jika diakses dari tunnel/produksi (frontend disajikan backend), pakai path relatif
-const isDevServer = typeof window !== 'undefined' &&
+export const isDevServer = typeof window !== 'undefined' &&
   (window.location.port === '5173' || window.location.port === '5174');
 
-const BASE_URL = isDevServer
+export const BASE_URL = isDevServer
   ? 'http://localhost:3001/api'
   : `${window.location.origin}/api`;
 

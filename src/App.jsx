@@ -7,6 +7,7 @@ import Dashboard        from './pages/Dashboard';
 import NasabahManagement from './pages/NasabahManagement';
 import TemplateManager  from './pages/TemplateManager';
 import BlastControl     from './pages/BlastControl';
+import { BASE_URL }     from './services/api';
 
 // ─── Navigation config ────────────────────────────────────────
 const NAV_ITEMS = [
@@ -111,7 +112,7 @@ export default function App() {
   useEffect(() => {
     const check = async () => {
       try {
-        const r = await fetch('http://localhost:3001/api/status');
+        const r = await fetch(`${BASE_URL}/status`);
         const d = await r.json();
         setWaOnline(d.connected);
       } catch { setWaOnline(false); }

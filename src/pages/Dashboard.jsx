@@ -10,7 +10,7 @@ import {
   Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { mockDailyStats } from '../data/mockData';
-import { waAPI, checkBackend } from '../services/api';
+import { waAPI, checkBackend, BASE_URL } from '../services/api';
 import { initSocket, disconnectSocket } from '../services/socket';
 import { getStoredNasabah } from '../services/storage';
 
@@ -131,8 +131,8 @@ export default function Dashboard() {
       if (backendOnline) {
         try {
           const [rs, ri] = await Promise.all([
-            fetch('http://localhost:3001/api/sent'),
-            fetch('http://localhost:3001/api/inbox'),
+            fetch(`${BASE_URL}/sent`),
+            fetch(`${BASE_URL}/inbox`),
           ]);
           sent  = await rs.json();
           inbox = await ri.json();
@@ -250,7 +250,7 @@ export default function Dashboard() {
     if (!backendOnline || !phoneInput.trim()) return;
     setWaStatus('connecting'); setQrImage(null); setPairingCode(null);
     try {
-      const res = await fetch('http://localhost:3001/api/connect/pairing', {
+      const res = await fetch(`${BASE_URL}/connect/pairing`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: phoneInput.trim() }),
@@ -264,7 +264,7 @@ export default function Dashboard() {
     if (!backendOnline || disconnecting) return;
     setDisconnecting(true);
     try {
-      await fetch('http://localhost:3001/api/disconnect', { method: 'POST' });
+      await fetch(`${BASE_URL}/disconnect`, { method: 'POST' });
     } catch (_) {}
     setWaStatus('disconnected');
     setConnectedPhone(null);
@@ -275,7 +275,7 @@ export default function Dashboard() {
 
   const handleResetHealth = async () => {
     try {
-      await fetch('http://localhost:3001/api/health/reset', { method: 'POST' });
+      await fetch(`${BASE_URL}/health/reset`, { method: 'POST' });
       setRiskLevel('low'); setAutoPaused(false);
     } catch (_) {}
   };
