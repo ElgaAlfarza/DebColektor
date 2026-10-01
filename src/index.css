@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    @apply bg-slate-950 text-slate-100 font-sans;
+    margin: 0;
+    padding: 0;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-900;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-600 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-500;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg;
+  }
+  .btn-primary {
+    @apply bg-teal-600 hover:bg-teal-500 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 text-sm;
+  }
+  .btn-secondary {
+    @apply bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 text-sm;
+  }
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 text-sm;
+  }
+  .input-field {
+    @apply bg-slate-700 border border-slate-600 text-slate-100 placeholder-slate-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors w-full;
+  }
+  .badge-good {
+    @apply bg-teal-900/60 text-teal-400 border border-teal-700/50 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-medium {
+    @apply bg-yellow-900/60 text-yellow-400 border border-yellow-700/50 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-risk {
+    @apply bg-red-900/60 text-red-400 border border-red-700/50 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-lunas {
+    @apply bg-teal-900/60 text-teal-400 border border-teal-700/50 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-janji {
+    @apply bg-blue-900/60 text-blue-400 border border-blue-700/50 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-belum {
+    @apply bg-red-900/60 text-red-400 border border-red-700/50 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-700/60 transition-all duration-200 cursor-pointer text-sm font-medium;
+  }
+  .nav-item.active {
+    @apply bg-teal-600/20 text-teal-400 border border-teal-600/30;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.typing-indicator span {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #4ade80;
+  animation: bounce 1.2s infinite;
+}
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-6px); }
+}
