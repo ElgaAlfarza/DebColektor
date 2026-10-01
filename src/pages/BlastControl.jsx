@@ -6,6 +6,11 @@ import {
   MessageSquare, RefreshCw, Wifi, WifiOff
 } from 'lucide-react';
 import { mockNasabah, formatRupiah } from '../data/mockData';
+import {
+  getStoredNasabah,
+  clearStoredNasabah,
+  getStoredNasabahMeta,
+} from '../services/storage';
 
 // ─── Template Siap Pakai ─────────────────────────────────────
 const READY_TEMPLATES = [
@@ -139,13 +144,21 @@ export default function BlastControl() {
   const stopRef    = useRef(false);   // flag untuk stop blast
   const intervalRef = useRef(null);
 
-  // ── Load nasabah dari localStorage ─────────────────────────
+  const [meta, setMeta]                     = useState(() => getStoredNasabahMeta());
+
+  // ── Load nasabah dari storage dengan auto-sync ──────────────
   useEffect(() => {
-    const saved = localStorage.getItem('debcolektor_nasabah');
-    if (saved) {
-      try { setAllNasabah(JSON.parse(saved)); return; } catch (_) {}
-    }
-    setAllNasabah(mockNasabah);
+    const load = () => {
+      setAllNasabah(getStoredNasabah());
+      setMeta(getStoredNasabahMeta());
+    };
+    load();
+    window.addEventListener('nasabah:updated', load);
+    const interval = setInterval(load, 30000);
+    return () => {
+      window.removeEventListener('nasabah:updated', load);
+      clearInterval(interval);
+    };
   }, []);
 
   // ── Cek status WA setiap 5 detik ───────────────────────────
@@ -397,6 +410,35 @@ export default function BlastControl() {
           <p className="text-sm text-yellow-300">
             WhatsApp belum terhubung. Pergi ke <strong>Dashboard</strong> dan hubungkan WA terlebih dahulu.
           </p>
+        </div>
+      )}
+
+      {/* Privacy & Auto-expiry Banner */}
+      {meta && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-900/70 border border-slate-700/70 rounded-xl text-xs">
+          <div className="flex items-center gap-2 text-slate-300">
+            <Shield size={14} className="text-teal-400 flex-shrink-0" />
+            <span>
+              <strong>Data Sesi ({allNasabah.length} kontak):</strong> Otomatis terhapus dalam{' '}
+              <span className="text-amber-400 font-bold font-mono">
+                {meta.remainingHours} jam {meta.remainingMinutes} menit
+              </span>.
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              if (window.confirm('Bersihkan antrian dan seluruh data nasabah sesi ini?')) {
+                clearStoredNasabah();
+                setAllNasabah([]);
+                setSelectedIds([]);
+                setQueue([]);
+                fetch('http://localhost:3001/api/queue', { method: 'DELETE' }).catch(() => {});
+              }
+            }}
+            className="text-red-400 hover:text-red-300 underline font-medium self-start sm:self-auto flex items-center gap-1 flex-shrink-0"
+          >
+            <Trash2 size={12} /> Bersihkan Data Sesi
+          </button>
         </div>
       )}
 

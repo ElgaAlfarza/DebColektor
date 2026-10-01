@@ -12,6 +12,7 @@ import {
 import { mockDailyStats } from '../data/mockData';
 import { waAPI, checkBackend } from '../services/api';
 import { initSocket, disconnectSocket } from '../services/socket';
+import { getStoredNasabah } from '../services/storage';
 
 // ─── Sub-Components ──────────────────────────────────────────
 const MetricCard = ({ icon: Icon, label, value, sub, trend, color, loading }) => (
@@ -120,9 +121,8 @@ export default function Dashboard() {
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      // 1. Total nasabah dari localStorage
-      const savedNasabah = localStorage.getItem('debcolektor_nasabah');
-      const nasabahList  = savedNasabah ? JSON.parse(savedNasabah) : [];
+      // 1. Total nasabah dari storage privasi
+      const nasabahList = getStoredNasabah();
       setTotalNasabah(nasabahList.length);
 
       // 2. Pesan terkirim & balasan dari backend
@@ -228,10 +228,15 @@ export default function Dashboard() {
     fetchStats();
   }, [fetchStats]);
 
-  // ── Auto refresh stats tiap 30 detik ────────────────────
+  // ── Auto refresh stats tiap 30 detik & saat data nasabah diubah ───
   useEffect(() => {
+    const handleUpdate = () => fetchStats();
+    window.addEventListener('nasabah:updated', handleUpdate);
     const t = setInterval(fetchStats, 30_000);
-    return () => clearInterval(t);
+    return () => {
+      window.removeEventListener('nasabah:updated', handleUpdate);
+      clearInterval(t);
+    };
   }, [fetchStats]);
 
   // ── Actions ──────────────────────────────────────────────

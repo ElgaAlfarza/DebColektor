@@ -4,9 +4,15 @@ import * as XLSX from 'xlsx';
 import {
   Upload, Search, Filter, Edit2, Trash2, Eye, ChevronDown,
   FileSpreadsheet, Plus, AlertCircle, CheckCircle, Clock,
-  Download, RefreshCw, SortAsc, Info, X
+  Download, RefreshCw, SortAsc, Info, X, Shield, Sparkles
 } from 'lucide-react';
 import { mockNasabah, formatRupiah } from '../data/mockData';
+import {
+  getStoredNasabah,
+  saveStoredNasabah,
+  clearStoredNasabah,
+  getStoredNasabahMeta,
+} from '../services/storage';
 
 const STATUS_CONFIG = {
   'Lunas':      { cls: 'badge-lunas', icon: CheckCircle },
@@ -115,14 +121,8 @@ function parseRows(rows, colMap) {
 const csvTemplate = `Nama,Nomor Telepon,Nominal Tunggakan,Tanggal Jatuh Tempo,Link Pembayaran\nBudi Santoso,628112345678,4500000,2026-09-10,https://pay.example.com/budi001\nSiti Rahayu,628123456789,12000000,2026-09-08,https://pay.example.com/siti002`;
 
 export default function NasabahManagement() {
-  // Load dari localStorage jika ada, fallback ke mock
-  const [data, setData] = useState(() => {
-    try {
-      const saved = localStorage.getItem('debcolektor_nasabah');
-      if (saved) return JSON.parse(saved);
-    } catch (_) {}
-    return mockNasabah;
-  });
+  const [data, setData] = useState(() => getStoredNasabah());
+  const [meta, setMeta] = useState(() => getStoredNasabahMeta());
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('Semua');
   const [dragOver, setDragOver] = useState(false);
@@ -133,10 +133,52 @@ export default function NasabahManagement() {
   const [previewData, setPreviewData] = useState(null);
   const fileRef = useRef();
 
-  // Simpan ke localStorage setiap kali data berubah → dibaca oleh BlastControl
+  // Sinkronisasi data & meta masa berlaku 24 jam
   useEffect(() => {
-    try { localStorage.setItem('debcolektor_nasabah', JSON.stringify(data)); } catch (_) {}
-  }, [data]);
+    const handleUpdate = () => {
+      setData(getStoredNasabah());
+      setMeta(getStoredNasabahMeta());
+    };
+    window.addEventListener('nasabah:updated', handleUpdate);
+    const interval = setInterval(() => {
+      const currentMeta = getStoredNasabahMeta();
+      setMeta(currentMeta);
+      if (!currentMeta && data.length > 0) {
+        setData([]);
+      }
+    }, 30000);
+    return () => {
+      window.removeEventListener('nasabah:updated', handleUpdate);
+      clearInterval(interval);
+    };
+  }, [data.length]);
+
+  // Update data & simpan dengan stempel waktu
+  const updateData = (newData) => {
+    setData(newData);
+    saveStoredNasabah(newData);
+    setMeta(getStoredNasabahMeta());
+  };
+
+  const handleClearAll = () => {
+    if (window.confirm('Hapus seluruh data nasabah sesi ini?\n\nData yang di-upload akan langsung dihapus bersih dari browser dan tidak tersimpan lagi.')) {
+      clearStoredNasabah();
+      setData([]);
+      setSelectedRows([]);
+      setUploadResult({ info: 'Seluruh data nasabah sesi ini telah dihapus bersih.' });
+      setMeta(null);
+    }
+  };
+
+  const loadDemoData = () => {
+    updateData(mockNasabah);
+    setUploadResult({
+      success: true,
+      count: mockNasabah.length,
+      fileName: 'data_contoh_demo.xlsx',
+      colMap: { nama: 'Nama', noTelp: 'No Telepon', nominal: 'Nominal', jatuhTempo: 'Jatuh Tempo' }
+    });
+  };
 
   const filtered = data.filter(n => {
     const matchSearch = n.nama.toLowerCase().includes(search.toLowerCase()) ||
@@ -209,7 +251,8 @@ export default function NasabahManagement() {
 
   const confirmImport = () => {
     if (!previewData) return;
-    setData(prev => [...prev, ...previewData.parsed]);
+    const combined = [...data, ...previewData.parsed];
+    updateData(combined);
     setUploadResult({
       success: true,
       count: previewData.parsed.length,
@@ -222,9 +265,15 @@ export default function NasabahManagement() {
   const handleFileDrop = (e) => { e.preventDefault(); setDragOver(false); processFile(e.dataTransfer.files[0]); };
   const toggleSelect  = (id) => setSelectedRows(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const toggleAll     = () => setSelectedRows(prev => prev.length === filtered.length ? [] : filtered.map(n => n.id));
-  const handleStatusChange = (id, s) => setData(prev => prev.map(n => n.id === id ? { ...n, status: s } : n));
-  const handleDelete  = (id) => { setData(prev => prev.filter(n => n.id !== id)); setSelectedRows(prev => prev.filter(x => x !== id)); };
-  const handleDeleteSelected = () => { setData(prev => prev.filter(n => !selectedRows.includes(n.id))); setSelectedRows([]); };
+  const handleStatusChange = (id, s) => updateData(data.map(n => n.id === id ? { ...n, status: s } : n));
+  const handleDelete  = (id) => {
+    updateData(data.filter(n => n.id !== id));
+    setSelectedRows(prev => prev.filter(x => x !== id));
+  };
+  const handleDeleteSelected = () => {
+    updateData(data.filter(n => !selectedRows.includes(n.id)));
+    setSelectedRows([]);
+  };
 
   const downloadTemplate = () => {
     const blob = new Blob([csvTemplate], { type: 'text/csv' });
@@ -237,20 +286,56 @@ export default function NasabahManagement() {
 
   return (
     <div className="page-enter space-y-5">
+      {/* ─── Header ────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-white">Manajemen Data Nasabah</h1>
-          <p className="text-slate-400 text-sm">Total {data.length} nasabah · {data.filter(n => n.status === 'Lunas').length} lunas · {data.filter(n => n.status === 'Belum Bayar').length} belum bayar</p>
+          <p className="text-slate-400 text-sm">
+            Total {data.length} nasabah · {data.filter(n => n.status === 'Lunas').length} lunas · {data.filter(n => n.status === 'Belum Bayar').length} belum bayar
+          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {data.length > 0 && (
+            <button onClick={handleClearAll} className="btn-secondary text-red-400 hover:text-red-300 border-red-800/40">
+              <Trash2 size={14} /> Hapus Semua Data
+            </button>
+          )}
           <button onClick={downloadTemplate} className="btn-secondary">
             <Download size={14} /> Template CSV
           </button>
           <button onClick={() => fileRef.current.click()} className="btn-primary">
-            <Plus size={14} /> Tambah Nasabah
+            <Plus size={14} /> Upload Data
           </button>
         </div>
       </div>
+
+      {/* ─── Privacy & Auto-expiry Banner ──────────────────── */}
+      {meta && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-slate-900/80 border border-slate-700/70 rounded-xl text-xs">
+          <div className="flex items-center gap-2.5 text-slate-300">
+            <div className="p-1.5 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-400 flex-shrink-0">
+              <Shield size={16} />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-200">
+                Mode Privasi Sesi: Otomatis Terhapus dalam{' '}
+                <span className="text-amber-400 font-bold font-mono">
+                  {meta.remainingHours} jam {meta.remainingMinutes} menit
+                </span>
+              </p>
+              <p className="text-slate-400 text-[11px] mt-0.5">
+                Data nasabah yang di-upload hanya tersimpan sementara dan akan otomatis dibersihkan 1x24 jam demi keamanan data Anda.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleClearAll}
+            className="text-red-400 hover:text-red-300 underline font-medium cursor-pointer self-start sm:self-auto flex items-center gap-1 flex-shrink-0"
+          >
+            <Trash2 size={12} /> Hapus Sekarang
+          </button>
+        </div>
+      )}
 
       {/* ─── Upload Zone ────────────────────────────────────── */}
       <div
@@ -302,6 +387,17 @@ export default function NasabahManagement() {
                 </span>
               ))}
             </div>
+          </div>
+          <button onClick={() => setUploadResult(null)} className="text-slate-500 hover:text-slate-300"><X size={16}/></button>
+        </div>
+      )}
+
+      {uploadResult?.info && (
+        <div className="flex items-start gap-3 p-4 bg-blue-900/20 border border-blue-700/40 rounded-xl">
+          <Info size={18} className="text-blue-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-semibold text-blue-300">Informasi Sesi</p>
+            <p className="text-sm text-blue-200 mt-0.5">{uploadResult.info}</p>
           </div>
           <button onClick={() => setUploadResult(null)} className="text-slate-500 hover:text-slate-300"><X size={16}/></button>
         </div>
@@ -459,7 +555,15 @@ export default function NasabahManagement() {
                 );
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-500">Tidak ada data ditemukan</td></tr>
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
+                    <p className="font-medium text-slate-400">Tidak ada data nasabah</p>
+                    <p className="text-xs text-slate-500 mt-1">Silakan upload file Excel / CSV di atas atau gunakan data contoh</p>
+                    <button onClick={loadDemoData} className="btn-secondary text-xs mx-auto mt-3">
+                      <Sparkles size={13} className="text-yellow-400" /> Muat Data Contoh (Demo)
+                    </button>
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
